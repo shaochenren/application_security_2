@@ -1,0 +1,54 @@
+XSS attack
+
+Cause:
+It was discovered that the gift card view function in the view.py file included a parameter named director that was present in HTTP requests. It was observed that the director variable has a safe tag in the associated template gift.html. It implies that the string from our input would be escape.
+
+As a result, the JavaScript injection URL was http://127.0.0.1:8000/buy.html?director= instead of http://127.0.0.1:8000/buy.html. The alert window would appear along with the cookie for the current user. Since it was simpler to verify whether the injected script still remained after the fix, i simply used as the payload in the test case.
+
+Fix: 
+To get rid of this XSS vulnerability, i simply remove the safe tag from the gift.html template. Alternately, the Python HTML Library was employed in this modification. This library included a function called escape() that was used to format the input string. The encoding of a character like "" is &lt. With the help of this function, we can filter the JavaScript that was injected into the director variable by setting context['director'] = html.escape(director). 
+
+
+Bug 2: CSRF attack
+
+Cause:
+
+It was noticed that for gift_card_view page, both get and post were supported. Hence the exploit was to consider both GET and POST methods.
+For GET method:
+We created a CSRF payload, and when a user accessed it, it sent a GET request with the action http://127.0.0.1:8000/gift.html, the username test2, and the value 10,000. Due to the SameSite restriction, we utilize a form of GET method. It was discovered that setting.py's SameSite policy was "Lax," which meant that in some requests, like a href> or form method="GET">, the cookie would still be transmitted. A gift card from the victim user would be sent to the target account after the payload was activated.
+
+For POST method:
+Another issue is that the vulnerability still exists on earlier or other browsers, even for the POST method, for which some browsers, like Chrome and Firefox, had lax or strict SameSite policies. The POST form in the gift card view was found to be lacking in csrf protection. Therefore, in part1/xrsf post.html, a simulated form was made to generate the same post parameter as the actual form in the program, and set the value of username the attacker's account and amount 10,000 with an auto-submit script. For browsers without Lax or Strict SameSite policy, for example, the SameSite policy of Firefox was tested in the case and set to disabled. py The exploit took place when SESSION COOKIE SAMESITE was set to None.
+
+Fix:
+For GET CSRF attack: it is bad design to handle sensitive information related to gift cards using the HTTP method. So, the GET function was eliminated in order to correct this bad design.
+For POST CSRF attack: Csrf token was used to defend the website from POST CSRF attacks. A built-in Django feature called "% csrf token%" was implemented in the username and amount fields of the gift.html template, and the gift card view function in views.py checked the csrf token whenever a request used the POST method. The csrf middleware token would be verified by the system. The page would return 403 forbidden code if the token was valid. Thus, the POST approach stopped the csrf attack.
+
+BUG3:
+
+SQL Injection Bug 3 (bug 3.gftcrd)
+
+It was discovered that the original card query employed a raw SQL query clause in the use card view function of the view.py file, and that the query would search rows with data fields containing the same hash string as the signature. I first purchase a card and download the giftcard file. 
+I next edit the signature and add the following clause to the file: where id = "admin," union select "password" from LegacySite user. In this instance, I ended the quote symbol and joined a different query. In that query it would search the password stored in LegacySite_user and since it would always find the result due to the existence of user 'admin'
+
+fix:
+It might be safer to utilize Django ORM rather than a raw SQL query, especially for queries that might receive user-customized data. In order to resolve this problem, we change the raw query to the ORM format: card query = Card.objects.filter(data contains=signature).values("id").
+
+BUG4:
+
+this is a command line injection attack and i found that it appears in the http://127.0.0.1:8000/use.html, and as i tested, first i tried just use the each to invoke to see if the attacj success, but then i realized that i need the gftcrd file
+after i created the CLinjection and use the command gift;ipcongig;ls and it give me all the file listed, then i know my attack successed, it shows like below:
+GiftcardSite		images			requirements.txt
+HW2_Instructions.md	import_dbs.py		templates
+LegacySite		import_dbs.sh		tmp_file
+__pycache__		manage.py		users.csv
+bins			part1
+db.sqlite3		products.csv
+
+then i use the command 127.0.0.1;echo hello world; to print hello world, and in the terinal it gives me that the hello world so i know my attack successed
+
+fix:
+
+for this fix, in the file extras.py, i add the if condition to check the symbol ; and it fixed the issue, or there is another way which i think is better, that is to use the funciton shlex.quote() function. Which would detect the syntax of the input filename
+
+For part1 attack4 test: i comment the anything with the url link, because it requires to run the server but the github action file will run server forver and never move to next command, so for the test bug4, please uncomment the code where i label in the tests.py when running test

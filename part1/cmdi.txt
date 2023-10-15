@@ -1,0 +1,5 @@
+http://127.0.0.1:8000/use.html
+
+in the box, input the command 127.0.0.1;echo hello world; the attack will succcess
+card_data = CLinjection.gftcrd
+card_fname = 127.0.0.1;echo hello world;

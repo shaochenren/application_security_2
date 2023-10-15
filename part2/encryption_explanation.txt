@@ -1,0 +1,31 @@
+For Part 1: Basic Implementation:
+
+To encrypt our data field, we used djfernet and replaced the BinaryField in Models.Card with EncryptedBinaryField(). Since all the card data is now encrypted, any card data-related operation in the program needs to be changed to fit the encryption.
+
+In use_card_view, the query for cards needs to be modified since encryption with djfernet is non-deterministic. We can't use raw queries or Django ORM directly, so we obtain all card data in the database and iterate through it to find cards with the same signature. Since the original program assumes the signature is unique, we keep this assertion.
+
+We used Card.objects.all() to retrieve all the card data, which is decrypted automatically due to the djfernet package. The original program matched the signature in the whole card data, so we kept this logic and used the find() function in string. If str(x.data).find(signature) != -1, we append the found data to the card_query list: card_query.append(x.id).
+
+We also modified the card_query logic to use a list instead of a queryset directly. When printing the length of the card_query, we replaced the original card_query queryset with the card list we created above.
+
+For the line card = Card.objects.get(data=card_data), we assumed the data was unique and obtained all cards, finding the one that matched the queried card data. First, we assigned None to the target card and then iterated through all card objects. Since both card_data and x.data were in bytes type (keeping the original logic and using BinaryField), they could be compared without casting. In the original code, ObjectDoesNotExist was used since the card object was filtered from the DB directly. However, in this case, we modified this with AttributeError since the matching should be performed in the cards list, and if the card was not found, it would remain None, which means the card.used and card.save functions would throw such an exception.
+
+Part 2: Key Management
+
+Within the settings.py file, two keys were defined: the SECRET_KEY and the FERNET_KEYS. To ensure proper functioning of the Github action, default keys were established and placed in the part2 folder.
+
+The logic for using these keys is as follows: upon starting the server, the program checks for the existence of the secret_key.txt and fernet_key.txt files. If the files are found, the program loads the keys into memory. If the files are not found, the program generates a new key for the missing file, stores it in the corresponding file, and loads the keys into memory.
+
+Justification 1: Use of two keys
+
+In the Django program, the SECRET_KEY is utilized to encrypt various elements such as cookies and sessions. In the key policy of djfernet, if the FERNET_KEYS are not found, the SECRET_KEY is used as the default. However, in some cases, data stored in the database may be statically encrypted, meaning that with the correct key and encrypted data, an attacker could easily decrypt sensitive information. For instance, if an attacker exploits vulnerabilities and steals the secret key, they could use it to access encrypted data. By using a separate set of FERNET_KEYS, even if the SECRET_KEY is exposed, sensitive data in the database remains secure and inaccessible to attackers.
+
+Justification 2: Why keys were stored in files
+There were various methods to store the keys, but each had its limitations and potential security risks. Storing the key as a hardcoded value in the configuration file was vulnerable to source code theft. Using environment variables was also not entirely secure, as users with higher access privileges could potentially access them. Asking the admin to input the key each time the server started was inconvenient, and generating a new key on every startup could invalidate sessions and make it difficult to decrypt previously stored data.
+
+Therefore, in this assignment, the decision was made to store the keys in files, encrypted and stored in secure hardware such as encrypted USB devices or another server. Before the program started, the operator would connect the hardware to the server to read the keys into memory, then disconnect it once the server was running, increasing the security level.
+
+Justification 3: Potential threats and extra safety measures
+In this assignment, a simulated key was stored in plaintext within the part2 folder due to hardware limitations. However, in real-world key management, these files would be encrypted and stored in secure external or internal hardware, or in another reinforced key server. The devices storing the keys should be disconnected from the server once the keys were loaded into memory to prevent loss or theft.
+
+To mitigate the risk of losing the encryption devices or experiencing a key server failure or hack, keys should be changed periodically. In the program, if the key file does not exist, a new key is generated and stored in the key files to ensure the server runs correctly, but some data in the database may be inaccessible without the old fernet key. This is why keeping a recovery key is sometimes recommended.
